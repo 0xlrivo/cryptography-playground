@@ -1,6 +1,8 @@
+use std::ops::BitXor;
+
 // general trait for a Block
 // that abstracts away operations on u16,u32,u64,u128
-pub trait BlockType: Copy + Sized {
+pub trait BlockType: Copy + Sized + BitXor<Output = Self> {
     // byte size of the underlying type
     const SIZE: usize;
 
