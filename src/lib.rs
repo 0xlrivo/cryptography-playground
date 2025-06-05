@@ -1,8 +1,35 @@
+// general trait for a Block
+// that abstracts away operations on u16,u32,u64,u128
+pub trait BlockType: Copy + Sized {
+    // byte size of the underlying type
+    const SIZE: usize;
+
+    // converts a bytes array into this block
+    fn from_bytes(bytes: &[u8]) -> Self;
+
+    // converts this block into an array of bytes
+    fn to_bytes(&self) -> Vec<u8>;
+}
+
+impl BlockType for u64 {
+    const SIZE: usize = 8;
+
+    fn from_bytes(bytes: &[u8]) -> Self {
+        assert!(bytes.len() == 8, "Not an u64");
+        let mut tmp = [0u8; 8];
+        tmp.copy_from_slice(bytes);
+        u64::from_be_bytes(tmp)
+    }
+
+    fn to_bytes(&self) -> Vec<u8> {
+        self.to_be_bytes().to_vec()
+    }
+}
+
 // general trait for a BlockCipher
 pub trait BlockCipher {
     // implementations can define the size (es: DES u64)
-    // require Copy as all ciphers will use simple types like u64, u32
-    type Block: Copy;
+    type Block: BlockType;
     
     // takes a plain block and outputs a cipher block
     fn encrypt_block(&self, block: Self::Block) -> Self::Block;
@@ -11,41 +38,12 @@ pub trait BlockCipher {
     fn decrypt_block(&self, block: Self::Block) -> Self::Block;
 }
 
-// utility function to convert a string to a Vec<u64> of big-endian blocks
-pub fn ascii_str_to_u64_blocks(s: &str) -> Vec<u64> {
-    assert!(s.is_ascii(), "Only ASCII strings are supported!");
-    // convert the string in a bytes array
-    let bytes = s.as_bytes();
-    // initialize the blocks vector
-    let mut blocks = Vec::new();
+// general trait for a Cipher Operation Mode (ECB, CBC, ...)
+// that wraps a BlockCipher
+pub trait CipherOperationMode<C: BlockCipher> {
+    // encrypt some plaintext bytes using the provided cipher
+    fn encrypt(&self, cipher: &C, plaintext: &[u8]) -> Vec<u8>;
     
-    // iterate over 8 bytes chunks
-    for chunk in bytes.chunks(8) {  // TODO: add padding
-        let mut block = [0u8; 8];
-        for i in 0..8 {
-            block[i] = chunk[i];
-        }
-        // from_be_bytes is necessary for compatibility
-        blocks.push(u64::from_be_bytes(block));
-    }
-
-    blocks
-}
-
-// utility function to convert a Vec<u64> of blocks into a String
-pub fn vec_u64_blocks_to_ascii_str(blocks: &[u64]) -> String {
-    // 1. convert the u64 array into an u8 array
-    let mut bytes = Vec::new();
-    for &block in blocks {
-        bytes.extend_from_slice(&block.to_be_bytes());
-    }
-
-    String::from_utf8(bytes).expect("Invalid ASCII")
-}
-
-#[test]
-fn test_conversions() {
-    let plaintext = String::from("ABCDEFGH");
-    let blocks = ascii_str_to_u64_blocks(&plaintext);
-    assert!(plaintext == vec_u64_blocks_to_ascii_str(&blocks));
+    // decrypt some ciphertext bytes using the provided cipher
+    fn decrypt(&self, cipher: &C, ciphertext: &[u8]) -> Vec<u8>;
 }

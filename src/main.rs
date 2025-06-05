@@ -1,39 +1,25 @@
-mod minifeistel64;
-use minifeistel64::MiniFeistel64;
-use cryptography_playground::{ascii_str_to_u64_blocks, vec_u64_blocks_to_ascii_str, BlockCipher};
+mod ciphers; 
+mod operation_modes;
+mod utils;
+use ciphers::minifeistel64::MiniFeistel64;
+use cryptography_playground::CipherOperationMode;
+
+use crate::operation_modes::ecb::ECB;
 
 fn main() {
+    // message that we want to encrypt
+    let message = "Ciao mondo!!!!!!";
+    println!("Plain text: {:?}", Vec::from(message));
+
+    // define the cipher to use 
     let cipher = MiniFeistel64::new(0x1234567890abcdef);
-    let message = "ABCDEFGHabcdefgh";
-    let plaintext = ascii_str_to_u64_blocks(message);
-    
-    let ciphertext = ecb_encrypt(&cipher, &plaintext);
-    let decrypted = ecb_decrypt(&cipher, &ciphertext);
 
-    println!("Got message: {}", vec_u64_blocks_to_ascii_str(&decrypted));
-}
+    // encrypt it using ECB mode
+    let ciphertext = ECB.encrypt(&cipher, message.as_bytes());
+    println!("Ciphertext: {:?}", ciphertext);
 
-fn ecb_encrypt<C: BlockCipher>(cipher: &C, plain_blocks: &[C::Block]) -> Vec<C::Block> {
-    plain_blocks.iter().map(|b| cipher.encrypt_block(*b)).collect()
-}
-
-fn ecb_decrypt<C: BlockCipher>(cipher: &C, cipher_blocks: &[C::Block]) -> Vec<C::Block> {
-    cipher_blocks.iter().map(|b| cipher.decrypt_block(*b)).collect()
-}
-
-#[test]
-fn test_minifeistel64_single_block() {
-    let cipher = MiniFeistel64::new(0x1234567890abcdef);
-    let message = "ABCDEFGH";
-    let plaintext = ascii_str_to_u64_blocks(message)[0];
-    let ciphertext = cipher.feistel_encrypt_block(plaintext);
-    let decrypted = cipher.feistel_decrypt_block(ciphertext);
-    
-    println!("Message\t{}", message);
-    println!("Plaintext\t0x{:X}", plaintext);
-    println!("Ciphertext\t0x{:X}", ciphertext);
-    println!("Decypted\t0x{:X}", decrypted);
-    println!("Got message: {}", vec_u64_blocks_to_ascii_str(&vec![decrypted]));
-
-    assert!(plaintext == decrypted);
+    // decrypt it using ECB mode 
+    let decrypted = ECB.decrypt(&cipher, ciphertext.as_slice());
+    println!("Decrypted text: {:?}", decrypted);
+    println!("Decrypted message: {}", String::from_utf8(decrypted).expect("invalid UTF-8"));
 }
