@@ -12,12 +12,25 @@
 *   3. s[i] = s[i+2]
 */
 
-// we use 8 rounds of a feistel structure
+use cryptography_playground::BlockCipher;
+
 const FEISTEL_ROUNDS: usize = 8;
 
 pub struct MiniFeistel64 {
     // currently used key
     key: u64    
+}
+
+impl BlockCipher for MiniFeistel64 {
+    type Block = u64;
+
+    fn encrypt_block(&self, block: Self::Block) -> Self::Block {
+        self.feistel_encrypt_block(block)
+    }
+
+    fn decrypt_block(&self, block: Self::Block) -> Self::Block {
+        self.feistel_decrypt_block(block)
+    }
 }
 
 impl MiniFeistel64 {
@@ -33,13 +46,13 @@ impl MiniFeistel64 {
         let (mut old_l, mut old_r) = self.split_block(p);
 
         // compute round keys
-        let round_keys = self.feistel_derive_round_keys();
+        let round_keys = self.derive_round_keys();
         
         // for every round
         for round_number in 0..FEISTEL_ROUNDS {
             // compute this round;
             let new_l = old_r;
-            let new_r = old_l ^ self.feistel_round_function(
+            let new_r = old_l ^ self.round_function(
                 old_r, 
                 round_keys[round_number]
             );
@@ -58,12 +71,12 @@ impl MiniFeistel64 {
         let (mut old_r, mut old_l) = self.split_block(c);
         
         // compute round keys
-        let round_keys = self.feistel_derive_round_keys();
+        let round_keys = self.derive_round_keys();
         
         for round_number in (0..FEISTEL_ROUNDS).rev() {
             // compute this round
             let new_r = old_l;
-            let new_l = old_r ^ self.feistel_round_function(
+            let new_l = old_r ^ self.round_function(
                 old_l,
                 round_keys[round_number]
             );
@@ -77,7 +90,7 @@ impl MiniFeistel64 {
         self.combine_block(old_l, old_r)
     }
     
-    fn feistel_round_function(&self, old_r: u32, round_key: u32) -> u32 {
+    fn round_function(&self, old_r: u32, round_key: u32) -> u32 {
         // convert old_r into an array [u8; 4]
         let mut s: [u8; 4] = old_r.to_be_bytes();
         // same for the round key
@@ -101,7 +114,7 @@ impl MiniFeistel64 {
         u32::from_be_bytes(s)
     }
 
-    fn feistel_derive_round_keys(&self) -> [u32; FEISTEL_ROUNDS] {
+    fn derive_round_keys(&self) -> [u32; FEISTEL_ROUNDS] {
         let mut keys = [0u32; FEISTEL_ROUNDS];
         
         // compute the round key for each round

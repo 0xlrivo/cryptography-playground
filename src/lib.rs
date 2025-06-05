@@ -1,3 +1,16 @@
+// general trait for a BlockCipher
+pub trait BlockCipher {
+    // implementations can define the size (es: DES u64)
+    // require Copy as all ciphers will use simple types like u64, u32
+    type Block: Copy;
+    
+    // takes a plain block and outputs a cipher block
+    fn encrypt_block(&self, block: Self::Block) -> Self::Block;
+
+    // takes a cipher block and outputs a plain block
+    fn decrypt_block(&self, block: Self::Block) -> Self::Block;
+}
+
 // utility function to convert a string to a Vec<u64> of big-endian blocks
 pub fn ascii_str_to_u64_blocks(s: &str) -> Vec<u64> {
     assert!(s.is_ascii(), "Only ASCII strings are supported!");
