@@ -15,7 +15,7 @@ impl<C: BlockCipher> CipherOperationMode<C> for CBC<C> {
         let mut out = Vec::new();
         let mut prev = self.iv;
         for (_, chunk) in plaintext.chunks(C::Block::SIZE).enumerate() {
-            // reconstruct i-th block
+            // reconstruct i-th block from the i-th chunk
             let plain_block = C::Block::from_bytes(chunk);
             // run the encryption function on plain_block XOR prev
             let cipher_block = cipher.encrypt_block(plain_block ^ prev); 
@@ -38,7 +38,7 @@ impl<C: BlockCipher> CipherOperationMode<C> for CBC<C> {
         let mut out = Vec::new();
         let mut prev = self.iv;
         for (_, chunk) in ciphertext.chunks(C::Block::SIZE).enumerate() {
-            // reconstruct i-th block
+            // reconstruct i-th block from i-th chunk
             let cipher_block = C::Block::from_bytes(chunk);
             // run decryption function on it
             let plain_block = cipher.decrypt_block(cipher_block) ^ prev;

@@ -1,15 +1,15 @@
 /*
 * A super simple block chyper implementation
 * Carachteristics:
-* - you can select the key and the number of rounds
 * - block size is 64 bit
 * - key size is 64 bit too
-* - round function:
+* - 8 rounds
+* - feistel round function:
 *   0. s = block splitted in 4 chunks of 1 byte each
 *   0. k = key splitted in 4 chnks of 1 byte each
 *   1. s[i] XOR k[i]
-*   2. s[i] >> 1 without loosing information
-*   3. s[i] = s[i+2]
+*   2. s[i] << 1 without loosing information
+*   3. s[i] = s[i+2] (right rotation by 2 places)
 */
 
 use cryptography_playground::BlockCipher;
@@ -62,7 +62,7 @@ impl MiniFeistel64 {
             old_r = new_r;
         }
         
-        // combine back l and r
+        // combine back l and r in reverse (final permutation)
         self.combine_block(old_r, old_l)
     }
 
@@ -97,31 +97,38 @@ impl MiniFeistel64 {
         let k: [u8; 4] = round_key.to_be_bytes();
 
         // phase 1 (substitution) -> s[i] XOR k[i]
+        //
         for i in 0..4 {
             s[i] ^= k[i];
         }
 
-        // phase 2 (permutation) -> left shift every bit by 1
+        // phase 2 (substitution) -> left shift every bit by 1
         // rotate_left() makes sure we don't lose any bit due to shifting
+        // by appending any "cut out" bit
         for i in 0..4 {
             s[i] = s[i].rotate_left(1);
         }
 
-        // phase 3 (permutation) -> shift every chunk by 2 positions to the left 
+        // phase 3 (permutation) -> shift every chunk by 2 positions to the right
+        // before:
+        //  s = [s1, s2, s3, s4]
+        // after
+        //  s = [s3, s4, s2, s1]
         s.rotate_right(2);
         
         // return s, casted into a native-endianess u32
         u32::from_be_bytes(s)
     }
-
+    
+    // compute the round keys for all rounds
     fn derive_round_keys(&self) -> [u32; FEISTEL_ROUNDS] {
         let mut keys = [0u32; FEISTEL_ROUNDS];
         
-        // compute the round key for each round
+        // super simle key derivation function that does:
+        // 1) key << (round_number * 8)
+        // 2) take the 32th most significant bits out
         for i in 0..FEISTEL_ROUNDS {
-            // left rotate the master key by round * 8
             let rotated = self.key.rotate_left((i * 8) as u32);
-            // and then take only the upper 32 bits
             keys[i] = (rotated >> 32) as u32
         }
 
