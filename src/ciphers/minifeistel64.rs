@@ -34,11 +34,14 @@ impl BlockCipher for MiniFeistel64 {
 }
 
 impl MiniFeistel64 {
-    // initialize the cyper
+    // initialize the cipher
     pub fn new(key: u64) -> Self {
-        Self {
-            key,
-        }
+        Self { key }
+    }
+    
+    // changes the secret key to use
+    pub fn change_key(&mut self, new_key: u64) {
+        self.key = new_key;
     }
 
     pub fn feistel_encrypt_block(&self, p: u64) -> u64 {

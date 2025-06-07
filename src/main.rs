@@ -3,8 +3,7 @@ mod operation_modes;
 mod utils;
 use ciphers::minifeistel64::MiniFeistel64;
 use cryptography_playground::CipherOperationMode;
-
-use crate::operation_modes::{cbc::CBC, ecb::ECB};
+use crate::operation_modes::{cbc::CBC};
 
 fn main() {
     // message that we want to encrypt
