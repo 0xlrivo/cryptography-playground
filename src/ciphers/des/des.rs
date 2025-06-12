@@ -142,6 +142,7 @@ impl DES {
 }
 
 #[test]
+// https://page.math.tu-berlin.de/~kant/teaching/hess/krypto-ws2006/des.htm
 fn test_know_des_vector() {
     // parameters
     let key: u64 = 0x133457799BBCDFF1;
