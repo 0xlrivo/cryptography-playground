@@ -47,25 +47,20 @@ impl DES {
         let round_keys = self.schedule_subkeys();
 
         // 3. split it into two halves 32 bit blocks for the feistel net
-        let (mut old_l, mut old_r) = split_block(out);
+        let (mut l, mut r) = split_block(out);
 
         // 4. apply 16 feistel rounds
         for n in 0..FEISTEL_ROUNDS {
-            // L_n = R_n-1
-            let new_l = old_r;
-            // R_n = L_n-1 XOR f(R_n-1, K_n
-            let new_r = old_l ^ self.round_function(
-                expand_r(old_r),    // expand r to 48 bits
-                round_keys[n]       // current round's key
+            let tmp = l ^ self.round_function(
+                expand_r(r),
+                round_keys[n]
             );
-
-            // update old values for next round
-            old_l = new_l;
-            old_r = new_r;
+            l = r;
+            r = tmp;
         }
         
         // 5. combine back L and R
-        out = combine_block(old_r, old_l);
+        out = combine_block(r, l);
 
         // 6. return IP^-1(out)
         apply_initial_permutation(out, true)
@@ -73,7 +68,30 @@ impl DES {
 
     // decrypts a single block
     pub fn des_decrypt_block(&self, c: u64) -> u64 {
-        unimplemented!()
+        // 1. IP (initial permutation)
+        let mut out = apply_initial_permutation(c, false);
+
+        // 2. compute all the round keys
+        let round_keys = self.schedule_subkeys();
+
+        // 3. split it into two 32 bit halves for the Feistel network
+        let (mut l, mut r) = split_block(out);
+
+        // 4. apply 16 feistel rounds (IN REVERSE)
+        for n in (0..FEISTEL_ROUNDS).rev() {
+            let tmp = l ^ self.round_function(
+                expand_r(r),
+                round_keys[n]
+            );
+            l = r;
+            r = tmp;
+        }
+
+        // 5. combine back L and R
+        out = combine_block(r, l);
+
+        // 6. return
+        apply_initial_permutation(out, true)
     }
     
     // round function
@@ -132,9 +150,16 @@ fn test_know_des_vector() {
 
     // encryption
     let cipher = DES::new(key);
-    let result = cipher.encrypt_block(plaintext);
+    let ciphertext = cipher.encrypt_block(plaintext);
     assert_eq!(
-        result, expected,
-        "Known DES vector failed"
+        ciphertext, expected,
+        "Known DES vector failed encryption"
+    );
+
+    // decryption
+    let result = cipher.des_decrypt_block(ciphertext);
+    assert_eq!(
+        result, plaintext,
+        "Known DES vector failed decryption"
     );
 }
