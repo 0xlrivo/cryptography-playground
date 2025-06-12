@@ -50,12 +50,13 @@ impl DES {
         let (mut old_l, mut old_r) = split_block(out);
 
         // 4. apply 16 feistel rounds
-        for round_number in 0..FEISTEL_ROUNDS {
-            // compute this round
+        for n in 0..FEISTEL_ROUNDS {
+            // L_n = R_n-1
             let new_l = old_r;
+            // R_n = L_n-1 XOR f(R_n-1, K_n
             let new_r = old_l ^ self.round_function(
-                expand_r(old_r),                        // expand r to 48 bits
-                round_keys[round_number]            // current round's key
+                expand_r(old_r),    // expand r to 48 bits
+                round_keys[n]       // current round's key
             );
 
             // update old values for next round
@@ -109,15 +110,31 @@ impl DES {
         let (mut c, mut d) = split_key(key);
         
         // 3. compute the 48 bit round key for all 16 rounds
-        for round_number in 0..FEISTEL_ROUNDS {
+        for i in 0..FEISTEL_ROUNDS {
             // apply the specified number of left rotations for the round
-            c = c.rotate_left(ITER_SX_SHIFT[round_number]);
-            d = d.rotate_left(ITER_SX_SHIFT[round_number]);
+            c = rotate_left_28(c, ITER_SX_SHIFT[i]);
+            d = rotate_left_28(d, ITER_SX_SHIFT[i]);
 
             // combine c and d togheter and apply PC-2 over the result
-            round_keys[round_number] = apply_pc2(combine_round_key(c, d));
+            round_keys[i] = apply_pc2(combine_round_key(c, d));
         }
 
         round_keys
     }
+}
+
+#[test]
+fn test_know_des_vector() {
+    // parameters
+    let key: u64 = 0x133457799BBCDFF1;
+    let plaintext: u64 = 0x0123456789ABCDEF;
+    let expected: u64 = 0x85E813540F0AB405;
+
+    // encryption
+    let cipher = DES::new(key);
+    let result = cipher.encrypt_block(plaintext);
+    assert_eq!(
+        result, expected,
+        "Known DES vector failed"
+    );
 }
