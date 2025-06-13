@@ -6,6 +6,8 @@
 * - bit 1 is the most significant bit
 */
 
+use std::u64;
+
 use cryptography_playground::BlockCipher;
 use crate::ciphers::des::des_constants::*;
 use crate::ciphers::des::des_utils::*;
@@ -40,60 +42,32 @@ impl DES {
 
     // encrypts a single bloc
     pub fn des_encrypt_block(&self, p: u64) -> u64 {
-        // 1. IP (initial permutation)
-        let mut out = apply_initial_permutation(p, false);
-
-        // 2. compute all the round keys
         let round_keys = self.schedule_subkeys();
-
-        // 3. split it into two halves 32 bit blocks for the feistel net
-        let (mut l, mut r) = split_block(out);
-
-        // 4. apply 16 feistel rounds
-        for n in 0..FEISTEL_ROUNDS {
-            let tmp = l ^ self.round_function(
-                expand_r(r),
-                round_keys[n]
-            );
-            l = r;
-            r = tmp;
-        }
-        
-        // 5. combine back L and R
-        out = combine_block(r, l);
-
-        // 6. return IP^-1(out)
-        apply_initial_permutation(out, true)
+        self.run_feistel_network(p, &round_keys)
     }
 
     // decrypts a single block
     pub fn des_decrypt_block(&self, c: u64) -> u64 {
-        // 1. IP (initial permutation)
-        let mut out = apply_initial_permutation(c, false);
-
-        // 2. compute all the round keys
         let round_keys = self.schedule_subkeys();
+        let reversed_keys: Vec<U48> = round_keys.iter().rev().copied().collect();
+        self.run_feistel_network(c, &reversed_keys)
+    }
+    
+    fn run_feistel_network(&self, block: u64, round_keys: &[U48]) -> u64 {
+        // 1) apply the initial permutation and split the output
+        let (mut l, mut r) = split_block(apply_initial_permutation(block, false));
 
-        // 3. split it into two 32 bit halves for the Feistel network
-        let (mut l, mut r) = split_block(out);
-
-        // 4. apply 16 feistel rounds (IN REVERSE)
-        for n in (0..FEISTEL_ROUNDS).rev() {
-            let tmp = l ^ self.round_function(
-                expand_r(r),
-                round_keys[n]
-            );
+        // 2) apply 16 rounds
+        for i in 0..FEISTEL_ROUNDS {
+            let tmp = l ^ self.round_function(expand_r(r), round_keys[i]);
             l = r;
             r = tmp;
         }
 
-        // 5. combine back L and R
-        out = combine_block(r, l);
-
-        // 6. return
-        apply_initial_permutation(out, true)
+        // 3) combine back and apply the inverse of the initial permutation
+        apply_initial_permutation(combine_block(r, l), true)
     }
-    
+
     // round function
     // old_r: already expanded 32 bit r using the E matrix
     // round_key: the round key for this round
