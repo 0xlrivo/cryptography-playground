@@ -1,29 +1,19 @@
+use crate::ciphers::rsa::rsa::RSA;
+
 mod ciphers; 
 mod operation_modes;
 mod utils;
 
-use cryptography_playground::{BlockCipher, CipherOperationMode};
-use crate::{ciphers::des::des::DES, operation_modes::cbc::CBC};
 
 fn main() {
-    // message
-    let message = "ABCDEFGH12345678AAAAAAAA";
+    let message = 2u64;
     
-    // DES cipher 
-    let des = DES::new(0x133457799BBCDFF1);
-    
-    // CBC operation mode
-    let cbc = CBC::<DES>{
-        iv: 0xFF
-    };
+    let cipher = RSA::new(14, 5, 11); 
 
-    // encryption
-    let ciphertext = cbc.encrypt(&des, message.as_bytes());
-    println!("Got ciphertext: {}", String::from_utf8_lossy(ciphertext.clone().as_slice()));
+    let ciphertext = cipher.encrypt_message(message);
+    println!("CIPHERTEXT: {}", ciphertext);
 
-    // decryption
-    let decrypted = cbc.decrypt(&des, ciphertext.as_slice());
-    let result = String::from_utf8(decrypted).expect("Invalid UTF-8");
-    println!("Got message: {}", result);
-    assert_eq!(message, result, "wrong decryption");
+    let decrypted = cipher.decrypt_message(ciphertext);
+    println!("DECRYPTED: {}", decrypted);
+    assert_eq!(decrypted, message);
 }
